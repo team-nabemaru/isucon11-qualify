@@ -15,4 +15,4 @@ restart:
 
 .PHONY: alp
 alp:
-	./alp json --file logs/nginx/access.log -o count,method,uri,min,avg,max
+	./alp json --file /var/log/nginx/access.log -o count,method,uri,min,avg,max
