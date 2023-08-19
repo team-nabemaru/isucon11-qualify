@@ -6,6 +6,7 @@ all:
 .PHONY: reset-logs
 reset-logs:
 	mv /var/log/nginx/access.log /var/log/nginx/access.log.$(shell date +%Y%m%d-%H%M%S) | : 
+	mv /var/log/mysql/mysql-slow.log /var/log/mysql-slow.log.$(shell date +%Y%m%d-%H%M%S) | : 
 	@make restart
 
 .PHONY: restart
