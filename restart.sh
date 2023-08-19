@@ -7,3 +7,4 @@ cp /home/isucon11-qualify/development/nginx-backend/isucondition.conf /etc/nginx
 systemctl restart isucondition.go.service
 systemctl restart jiaapi-mock.service
 systemctl restart nginx.service
+systemctl restart mysqld.service
