@@ -11,3 +11,8 @@ reset-logs:
 .PHONY: restart
 restart:
 	./restart.sh
+
+
+.PHONY: alp
+alp:
+	./alp json --file logs/nginx/access.log -o count,method,uri,min,avg,max
