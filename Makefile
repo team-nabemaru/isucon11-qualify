@@ -16,3 +16,8 @@ restart:
 .PHONY: alp
 alp:
 	./alp json --file /var/log/nginx/access.log -o count,method,uri,min,avg,max -m "/isu/[\w]+,/api/condition/[\w]+"
+
+
+.PHONY: mysqldumpslow
+mysqldumpslow:
+	mysqldumpslow /var/log/mysql/mysql-slow.log
