@@ -95,6 +95,11 @@ type IsuCondition struct {
 	CreatedAt  time.Time `db:"created_at"`
 }
 
+type IsuConditionTrend struct {
+	Timestamp time.Time `db:"timestamp"`
+	Condition string    `db:"condition"`
+}
+
 type MySQLConnectionEnv struct {
 	Host     string
 	Port     string
@@ -1106,9 +1111,9 @@ func getTrend(c echo.Context) error {
 		characterWarningIsuConditions := []*TrendCondition{}
 		characterCriticalIsuConditions := []*TrendCondition{}
 		for _, isu := range isuIDList {
-			conditions := []IsuCondition{}
+			conditions := []IsuConditionTrend{}
 			err = db.Select(&conditions,
-				"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY timestamp DESC",
+				"SELECT `condition`,`timestamp` FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY timestamp DESC LIMIT 1",
 				isu.JIAIsuUUID,
 			)
 			if err != nil {
