@@ -68,6 +68,11 @@ type Isu struct {
 	UpdatedAt  time.Time `db:"updated_at" json:"-"`
 }
 
+type IsuID struct {
+	ID         int    `db:"id" json:"id"`
+	JIAIsuUUID string `db:"jia_isu_uuid" json:"jia_isu_uuid"`
+}
+
 type IsuFromJIA struct {
 	Character string `json:"character"`
 }
@@ -1087,9 +1092,9 @@ func getTrend(c echo.Context) error {
 	res := []TrendResponse{}
 
 	for _, character := range characterList {
-		isuList := []Isu{}
-		err = db.Select(&isuList,
-			"SELECT * FROM `isu` WHERE `character` = ?",
+		isuIDList := []IsuID{}
+		err = db.Select(&isuIDList,
+			"SELECT `id`,`jia_isu_uuid` FROM `isu` WHERE `character` = ?",
 			character.Character,
 		)
 		if err != nil {
@@ -1100,7 +1105,7 @@ func getTrend(c echo.Context) error {
 		characterInfoIsuConditions := []*TrendCondition{}
 		characterWarningIsuConditions := []*TrendCondition{}
 		characterCriticalIsuConditions := []*TrendCondition{}
-		for _, isu := range isuList {
+		for _, isu := range isuIDList {
 			conditions := []IsuCondition{}
 			err = db.Select(&conditions,
 				"SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY timestamp DESC",
