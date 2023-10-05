@@ -1214,7 +1214,7 @@ func postIsuCondition(c echo.Context) error {
 			return c.String(http.StatusBadRequest, "bad request body")
 		}
 
-		sql += fmt.Sprintf("(%s, %s, %s, %s, %s),", jiaIsuUUID, timestamp.Format(createdFormat), strconv.FormatBool(cond.IsSitting), cond.Condition, cond.Message)
+		sql += fmt.Sprintf("('%s', '%s', %s, '%s', '%s'),", jiaIsuUUID, timestamp.Format(createdFormat), strconv.FormatBool(cond.IsSitting), cond.Condition, cond.Message)
 	}
 
 	sql = sql[:len(sql)-1] // Delete last comma
