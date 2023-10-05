@@ -1205,7 +1205,8 @@ func postIsuCondition(c echo.Context) error {
 		return c.String(http.StatusNotFound, "not found: isu")
 	}
 
-	sql := "INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`) VALUES "
+	sql := "INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`) VALUES (?, ?, ?, ?, ?);"
+	var sqlArgs []interface{}
 	for _, cond := range req {
 		timestamp := time.Unix(cond.Timestamp, 0)
 
@@ -1213,13 +1214,10 @@ func postIsuCondition(c echo.Context) error {
 			return c.String(http.StatusBadRequest, "bad request body")
 		}
 
-		sql += fmt.Sprintf("(%s, %s, %s, %s, %s),", jiaIsuUUID, timestamp.String(), strconv.FormatBool(cond.IsSitting), cond.Condition, cond.Message)
+		sqlArgs = append(sqlArgs, jiaIsuUUID, timestamp, cond.IsSitting, cond.Condition, cond.Message)
 	}
 
-	sql = sql[:len(sql)-1] // Delete last comma
-	sql += ";"
-
-	_, err = tx.Exec(sql)
+	_, err = tx.Exec(sql, sqlArgs)
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
