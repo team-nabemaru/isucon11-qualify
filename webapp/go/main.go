@@ -1054,21 +1054,28 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 	}
 
 	if startTime.IsZero() {
-		err = db.Select(&conditions,
-			fmt.Sprintf("SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `score`, `created_at` FROM `isu_condition` WHERE `score` IN (%s) AND `jia_isu_uuid` = ?", scorePlaceholder)+
-				"	AND `timestamp` < ?"+
-				"	ORDER BY `timestamp` DESC LIMIT 20",
-			cs, jiaIsuUUID, endTime,
-		)
+		var sql string
+		var params []interface{}
+		sql, params, err = sqlx.In("SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `score`, `created_at` FROM `isu_condition` WHERE `score` IN (?) AND `jia_isu_uuid` = ?",
+			" AND `timestamp` < ?",
+			" ORDER BY `timestamp` DESC LIMIT 20", cs, jiaIsuUUID, endTime)
+		if err != nil {
+			return nil, err
+		}
+		err = db.Select(&conditions, sql, params)
 	} else {
-		err = db.Select(&conditions,
-			fmt.Sprintf("SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `score`, `created_at` FROM `isu_condition` WHERE `score` IN (%s) AND `jia_isu_uuid` = ?", scorePlaceholder)+
-				"	AND `timestamp` < ?"+
-				"	AND ? <= `timestamp`"+
-				"	ORDER BY `timestamp` DESC LIMIT 20",
-			cs, jiaIsuUUID, endTime, startTime,
-		)
+		var sql string
+		var params []interface{}
+		sql, params, err = sqlx.In("SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `score`, `created_at` FROM `isu_condition` WHERE `score` IN (?) AND `jia_isu_uuid` = ?",
+			" AND `timestamp` < ?",
+			" AND ? <= `timestamp`",
+			" ORDER BY `timestamp` DESC LIMIT 20", cs, jiaIsuUUID, endTime, startTime)
+		if err != nil {
+			return nil, err
+		}
+		err = db.Select(&conditions, sql, params)
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("db error: %v", err)
 	}
@@ -1085,18 +1092,16 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 
 		log.Printf("debug cLevel: %v", cLevel)
 
-		if _, ok := conditionLevel[cLevel]; ok {
-			data := GetIsuConditionResponse{
-				JIAIsuUUID:     c.JIAIsuUUID,
-				IsuName:        isuName,
-				Timestamp:      c.Timestamp.Unix(),
-				IsSitting:      c.IsSitting,
-				Condition:      c.Condition,
-				ConditionLevel: cLevel,
-				Message:        c.Message,
-			}
-			conditionsResponse = append(conditionsResponse, &data)
+		data := GetIsuConditionResponse{
+			JIAIsuUUID:     c.JIAIsuUUID,
+			IsuName:        isuName,
+			Timestamp:      c.Timestamp.Unix(),
+			IsSitting:      c.IsSitting,
+			Condition:      c.Condition,
+			ConditionLevel: cLevel,
+			Message:        c.Message,
 		}
+		conditionsResponse = append(conditionsResponse, &data)
 	}
 
 	// if len(conditionsResponse) > limit {
