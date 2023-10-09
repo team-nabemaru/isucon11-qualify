@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -50,6 +51,8 @@ var (
 	jiaJWTSigningKey *ecdsa.PublicKey
 
 	postIsuConditionTargetBaseURL string // JIAへのactivate時に登録する，ISUがconditionを送る先のURL
+	conditionWg                   = sync.WaitGroup{}
+	condtionQ                     = make(chan func(), 10000)
 )
 
 type Config struct {
@@ -180,6 +183,18 @@ type JIAServiceRequest struct {
 	IsuUUID       string `json:"isu_uuid"`
 }
 
+func worker() {
+	defer conditionWg.Done()
+	for {
+		fn, ok := <-condtionQ
+		if !ok {
+			return
+		}
+
+		fn()
+	}
+}
+
 func getEnv(key string, defaultValue string) string {
 	val := os.Getenv(key)
 	if val != "" {
@@ -263,8 +278,16 @@ func main() {
 		return
 	}
 
+	for i := 0; i < 8; i++ {
+		conditionWg.Add(1)
+		go worker()
+	}
+
 	serverPort := fmt.Sprintf(":%v", getEnv("SERVER_APP_PORT", "3000"))
 	e.Logger.Fatal(e.Start(serverPort))
+	close(condtionQ)
+
+	conditionWg.Wait()
 }
 
 func getSession(r *http.Request) (*sessions.Session, error) {
@@ -1189,15 +1212,8 @@ func postIsuCondition(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "bad request body")
 	}
 
-	tx, err := db.Beginx()
-	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	defer tx.Rollback()
-
 	var count int
-	err = tx.Get(&count, "SELECT COUNT(*) FROM `isu` WHERE `jia_isu_uuid` = ?", jiaIsuUUID)
+	err = db.Get(&count, "SELECT COUNT(*) FROM `isu` WHERE `jia_isu_uuid` = ?", jiaIsuUUID)
 	if err != nil {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -1206,29 +1222,56 @@ func postIsuCondition(c echo.Context) error {
 		return c.String(http.StatusNotFound, "not found: isu")
 	}
 
-	sql := "INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`) VALUES "
-	for _, cond := range req {
-		timestamp := time.Unix(cond.Timestamp, 0)
+	condtionQ <- func() {
+		tx, err := db.Beginx()
+		if err != nil {
+			// c.Logger().Errorf("db error: %v", err)
+			// return c.NoContent(http.StatusInternalServerError)
+			return
+		}
+		defer tx.Rollback()
 
-		if !isValidConditionFormat(cond.Condition) {
-			return c.String(http.StatusBadRequest, "bad request body")
+		var count int
+		err = tx.Get(&count, "SELECT COUNT(*) FROM `isu` WHERE `jia_isu_uuid` = ?", jiaIsuUUID)
+		if err != nil {
+			// c.Logger().Errorf("db error: %v", err)
+			// return c.NoContent(http.StatusInternalServerError)
+			return
+		}
+		if count == 0 {
+			// return c.String(http.StatusNotFound, "not found: isu")
+			return
 		}
 
-		sql += fmt.Sprintf("('%s', '%s', %s, '%s', '%s'),", jiaIsuUUID, timestamp.Format(createdFormat), strconv.FormatBool(cond.IsSitting), cond.Condition, cond.Message)
-	}
+		sql := "INSERT INTO `isu_condition` (`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`) VALUES "
+		for _, cond := range req {
+			timestamp := time.Unix(cond.Timestamp, 0)
 
-	sql = sql[:len(sql)-1] // Delete last comma
+			if !isValidConditionFormat(cond.Condition) {
+				// return c.String(http.StatusBadRequest, "bad request body")
+				return
+			}
 
-	_, err = tx.Exec(sql)
-	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
+			sql += fmt.Sprintf("('%s', '%s', %s, '%s', '%s'),", jiaIsuUUID, timestamp.Format(createdFormat), strconv.FormatBool(cond.IsSitting), cond.Condition, cond.Message)
+		}
 
-	err = tx.Commit()
-	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+		sql = sql[:len(sql)-1] // Delete last comma
+
+		_, err = tx.Exec(sql)
+		if err != nil {
+			// c.Logger().Errorf("db error: %v", err)
+			// return c.NoContent(http.StatusInternalServerError)
+			return
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			// c.Logger().Errorf("db error: %v", err)
+			// return c.NoContent(http.StatusInternalServerError)
+			return
+		}
+
+		// return c.NoContent(http.StatusAccepted)
 	}
 
 	return c.NoContent(http.StatusAccepted)
