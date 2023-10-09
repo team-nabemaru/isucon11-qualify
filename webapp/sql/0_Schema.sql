@@ -21,6 +21,10 @@ CREATE TABLE `isu_condition` (
   `timestamp` DATETIME NOT NULL,
   `is_sitting` TINYINT(1) NOT NULL,
   `condition` VARCHAR(255) NOT NULL,
+  `is_dirty` tinyint AS (CASE WHEN SUBSTRING_INDEX(SUBSTRING_INDEX(SUBSTRING_INDEX(`condition`, ',', 1), ',', -1), '=', -1) = 'true' THEN 1 ELSE 0 END) STORED,
+  `is_overweight` tinyint AS (CASE WHEN SUBSTRING_INDEX(SUBSTRING_INDEX(SUBSTRING_INDEX(`condition`, ',', 2), ',', -1), '=', -1) = 'true' THEN 1 ELSE 0 END) STORED, 
+  `is_broken` tinyint AS (CASE WHEN SUBSTRING_INDEX(SUBSTRING_INDEX(SUBSTRING_INDEX(`condition`, ',', 3), ',', -1), '=', -1) = 'true' THEN 1 ELSE 0 END) STORED,
+  `score` tinyint AS (CASE is_dirty + is_overweight + is_broken WHEN 3 THEN 3 WHEN 0 THEN 0 ELSE 1 END) STORED,
   `message` VARCHAR(255) NOT NULL,
   `created_at` DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY(`id`)
