@@ -1340,9 +1340,9 @@ func convertLevel(s string) int {
 	case "warning":
 		return 1
 	case "critical":
-		return 2
+		return 3
 	default:
-		return 2
+		return 3
 	}
 }
 
@@ -1355,6 +1355,6 @@ func convertScore(s int) string {
 	case 3:
 		return "critical"
 	default:
-		return "2"
+		return "critical"
 	}
 }
