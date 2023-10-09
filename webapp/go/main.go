@@ -96,6 +96,7 @@ type IsuCondition struct {
 	IsSitting  bool      `db:"is_sitting"`
 	Condition  string    `db:"condition"`
 	Message    string    `db:"message"`
+	Score      int       `db:"score"`
 	CreatedAt  time.Time `db:"created_at"`
 }
 
@@ -815,7 +816,7 @@ func generateIsuGraphResponse(tx *sqlx.Tx, jiaIsuUUID string, graphDate time.Tim
 	var startTimeInThisHour time.Time
 	var condition IsuCondition
 
-	rows, err := tx.Queryx("SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `created_at` FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY `timestamp` ASC", jiaIsuUUID)
+	rows, err := tx.Queryx("SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `score`, `created_at` FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY `timestamp` ASC", jiaIsuUUID)
 	if err != nil {
 		return nil, fmt.Errorf("db error: %v", err)
 	}
@@ -1042,20 +1043,27 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 	conditions := []IsuCondition{}
 	var err error
 
+	cs := []string{}
+	for k := range conditionLevel {
+		cs = append(cs, convertLevel(k))
+	}
+	st := strings.Join(cs, ",")
+
 	if startTime.IsZero() {
 		err = db.Select(&conditions,
-			"SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `created_at` FROM `isu_condition` WHERE `jia_isu_uuid` = ?"+
+			"SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `score`, `created_at` FROM `isu_condition` WHERE `score` IN (?) AND `jia_isu_uuid` = ?"+
 				"	AND `timestamp` < ?"+
-				"	ORDER BY `timestamp` DESC",
-			jiaIsuUUID, endTime,
+				"	ORDER BY `timestamp` DESC LIMIT 20",
+			st, jiaIsuUUID, endTime,
 		)
 	} else {
 		err = db.Select(&conditions,
-			"SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `created_at` FROM `isu_condition` WHERE `jia_isu_uuid` = ?"+
+
+			"SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `score`, `created_at` FROM `isu_condition` WHERE `score` IN (?) AND `jia_isu_uuid` = ?"+
 				"	AND `timestamp` < ?"+
 				"	AND ? <= `timestamp`"+
-				"	ORDER BY `timestamp` DESC",
-			jiaIsuUUID, endTime, startTime,
+				"	ORDER BY `timestamp` DESC LIMIT 20",
+			st, jiaIsuUUID, endTime, startTime,
 		)
 	}
 	if err != nil {
@@ -1064,10 +1072,11 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 
 	conditionsResponse := []*GetIsuConditionResponse{}
 	for _, c := range conditions {
-		cLevel, err := calculateConditionLevel(c.Condition)
-		if err != nil {
-			continue
-		}
+		// cLevel, err := convertScore(c.Score)
+		// if err != nil {
+		// 	continue
+		// }
+		cLevel := convertScore(c.Score)
 
 		if _, ok := conditionLevel[cLevel]; ok {
 			data := GetIsuConditionResponse{
@@ -1083,9 +1092,9 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 		}
 	}
 
-	if len(conditionsResponse) > limit {
-		conditionsResponse = conditionsResponse[:limit]
-	}
+	// if len(conditionsResponse) > limit {
+	// 	conditionsResponse = conditionsResponse[:limit]
+	// }
 
 	return conditionsResponse, nil
 }
@@ -1315,4 +1324,30 @@ func isValidConditionFormat(conditionStr string) bool {
 
 func getIndex(c echo.Context) error {
 	return c.File(frontendContentsPath + "/index.html")
+}
+
+func convertLevel(s string) string {
+	switch s {
+	case "info":
+		return "0"
+	case "warning":
+		return "1"
+	case "critical":
+		return "2"
+	default:
+		return "2"
+	}
+}
+
+func convertScore(s int) string {
+	switch s {
+	case 0:
+		return "info"
+	case 1:
+		return "warning"
+	case 2:
+		return "critical"
+	default:
+		return "2"
+	}
 }
