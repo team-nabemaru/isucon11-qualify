@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -1073,6 +1074,8 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 		return nil, fmt.Errorf("db error: %v", err)
 	}
 
+	log.Printf("debug conditions: len(%d)", len(conditions))
+
 	conditionsResponse := []*GetIsuConditionResponse{}
 	for _, c := range conditions {
 		// cLevel, err := convertScore(c.Score)
@@ -1080,6 +1083,8 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 		// 	continue
 		// }
 		cLevel := convertScore(c.Score)
+
+		log.Printf("debug cLevel: %v", cLevel)
 
 		if _, ok := conditionLevel[cLevel]; ok {
 			data := GetIsuConditionResponse{
