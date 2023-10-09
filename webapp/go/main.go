@@ -1043,27 +1043,30 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 	conditions := []IsuCondition{}
 	var err error
 
-	cs := []string{}
+	cs := []int{}
 	for k := range conditionLevel {
 		cs = append(cs, convertLevel(k))
 	}
-	st := strings.Join(cs, ",")
+
+	scorePlaceholder := "?"
+	for i := 1; i < len(cs); i++ {
+		scorePlaceholder += ",?"
+	}
 
 	if startTime.IsZero() {
 		err = db.Select(&conditions,
-			"SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `score`, `created_at` FROM `isu_condition` WHERE `score` IN (?) AND `jia_isu_uuid` = ?"+
+			fmt.Sprintf("SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `score`, `created_at` FROM `isu_condition` WHERE `score` IN (%s) AND `jia_isu_uuid` = ?", scorePlaceholder)+
 				"	AND `timestamp` < ?"+
 				"	ORDER BY `timestamp` DESC LIMIT 20",
-			st, jiaIsuUUID, endTime,
+			cs, jiaIsuUUID, endTime,
 		)
 	} else {
 		err = db.Select(&conditions,
-
-			"SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `score`, `created_at` FROM `isu_condition` WHERE `score` IN (?) AND `jia_isu_uuid` = ?"+
+			fmt.Sprintf("SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `score`, `created_at` FROM `isu_condition` WHERE `score` IN (%s) AND `jia_isu_uuid` = ?", scorePlaceholder)+
 				"	AND `timestamp` < ?"+
 				"	AND ? <= `timestamp`"+
 				"	ORDER BY `timestamp` DESC LIMIT 20",
-			st, jiaIsuUUID, endTime, startTime,
+			cs, jiaIsuUUID, endTime, startTime,
 		)
 	}
 	if err != nil {
@@ -1326,16 +1329,16 @@ func getIndex(c echo.Context) error {
 	return c.File(frontendContentsPath + "/index.html")
 }
 
-func convertLevel(s string) string {
+func convertLevel(s string) int {
 	switch s {
 	case "info":
-		return "0"
+		return 0
 	case "warning":
-		return "1"
+		return 1
 	case "critical":
-		return "2"
+		return 2
 	default:
-		return "2"
+		return 2
 	}
 }
 
