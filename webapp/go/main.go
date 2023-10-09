@@ -1056,9 +1056,7 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 	if startTime.IsZero() {
 		var sql string
 		var params []interface{}
-		sql, params, err = sqlx.In("SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `score`, `created_at` FROM `isu_condition` WHERE `score` IN (?) AND `jia_isu_uuid` = ?",
-			" AND `timestamp` < ?",
-			" ORDER BY `timestamp` DESC LIMIT 20", cs, jiaIsuUUID, endTime)
+		sql, params, err = sqlx.In("SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `score`, `created_at` FROM `isu_condition` WHERE `score` IN (?) AND `jia_isu_uuid` = ? AND `timestamp` < ? ORDER BY `timestamp` DESC LIMIT 20", cs, jiaIsuUUID, endTime)
 		if err != nil {
 			return nil, err
 		}
@@ -1066,10 +1064,7 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 	} else {
 		var sql string
 		var params []interface{}
-		sql, params, err = sqlx.In("SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `score`, `created_at` FROM `isu_condition` WHERE `score` IN (?) AND `jia_isu_uuid` = ?",
-			" AND `timestamp` < ?",
-			" AND ? <= `timestamp`",
-			" ORDER BY `timestamp` DESC LIMIT 20", cs, jiaIsuUUID, endTime, startTime)
+		sql, params, err = sqlx.In("SELECT `id`, `jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`, `score`, `created_at` FROM `isu_condition` WHERE `score` IN (?) AND `jia_isu_uuid` = ? AND `timestamp` < ? AND ? <= `timestamp` ORDER BY `timestamp` DESC LIMIT 20", cs, jiaIsuUUID, endTime, startTime)
 		if err != nil {
 			return nil, err
 		}
