@@ -1352,7 +1352,7 @@ func convertScore(s int) string {
 		return "info"
 	case 1:
 		return "warning"
-	case 2:
+	case 3:
 		return "critical"
 	default:
 		return "2"
