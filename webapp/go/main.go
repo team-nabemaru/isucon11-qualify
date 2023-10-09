@@ -53,7 +53,7 @@ var (
 
 	postIsuConditionTargetBaseURL string // JIAへのactivate時に登録する，ISUがconditionを送る先のURL
 	conditionWg                   = sync.WaitGroup{}
-	condtionQ                     = make(chan func(), 50000)
+	condtionQ                     = make(chan func(), 10000)
 )
 
 type Config struct {
