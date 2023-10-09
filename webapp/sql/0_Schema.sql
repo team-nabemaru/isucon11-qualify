@@ -14,7 +14,7 @@ CREATE TABLE `isu` (
   `updated_at` DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY(`id`)
   INDEX idx_character (`character`),
-  INDEX idx_jiauserid (jia_user_id)
+  INDEX idx_jiauserid (`jia_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARACTER SET=utf8mb4;
 
 CREATE TABLE `isu_condition` (
