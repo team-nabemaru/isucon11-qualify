@@ -1048,11 +1048,6 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 		cs = append(cs, convertLevel(k))
 	}
 
-	scorePlaceholder := "?"
-	for i := 1; i < len(cs); i++ {
-		scorePlaceholder += ",?"
-	}
-
 	if startTime.IsZero() {
 		var sql string
 		var params []interface{}
