@@ -1062,7 +1062,7 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 		if err != nil {
 			return nil, err
 		}
-		err = db.Select(&conditions, sql, params)
+		err = db.Select(&conditions, sql, params...)
 	} else {
 		var sql string
 		var params []interface{}
@@ -1073,7 +1073,7 @@ func getIsuConditionsFromDB(db *sqlx.DB, jiaIsuUUID string, endTime time.Time, c
 		if err != nil {
 			return nil, err
 		}
-		err = db.Select(&conditions, sql, params)
+		err = db.Select(&conditions, sql, params...)
 	}
 
 	if err != nil {
