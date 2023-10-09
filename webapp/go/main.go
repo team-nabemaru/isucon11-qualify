@@ -21,11 +21,10 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
+	"github.com/labstack/echo-contrib/pprof"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
-
-	"net/http/pprof"
 )
 
 const (
@@ -237,6 +236,7 @@ func main() {
 	e := echo.New()
 	e.Debug = true
 	e.Logger.SetLevel(log.DEBUG)
+	pprof.Register(e)
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
@@ -262,13 +262,6 @@ func main() {
 	e.GET("/isu/:jia_isu_uuid/graph", getIndex)
 	e.GET("/register", getIndex)
 	e.Static("/assets", frontendContentsPath+"/assets")
-
-	pprofGroup := e.Group("/debug/pprof")
-	pprofGroup.Any("/cmdline", echo.WrapHandler(http.HandlerFunc(pprof.Cmdline)))
-	pprofGroup.Any("/profile", echo.WrapHandler(http.HandlerFunc(pprof.Profile)))
-	pprofGroup.Any("/symbol", echo.WrapHandler(http.HandlerFunc(pprof.Symbol)))
-	pprofGroup.Any("/trace", echo.WrapHandler(http.HandlerFunc(pprof.Trace)))
-	pprofGroup.Any("/*", echo.WrapHandler(http.HandlerFunc(pprof.Index)))
 
 	mySQLConnectionData = NewMySQLConnectionEnv()
 
