@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/carlescere/scheduler"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
@@ -54,6 +55,12 @@ var (
 	postIsuConditionTargetBaseURL string // JIAへのactivate時に登録する，ISUがconditionを送る先のURL
 	conditionWg                   = sync.WaitGroup{}
 	condtionQ                     = make(chan func(), 10000)
+
+	// https://github.com/y1r/isucon11-yosen/commit/300c8343c6eda8f7da23d2294f3a829440b4f06e
+	existUsers      map[string]struct{}
+	existUsersMutex sync.RWMutex
+
+	trendCache sync.Map
 )
 
 type Config struct {
@@ -238,6 +245,8 @@ func main() {
 	e.Debug = true
 	e.Logger.SetLevel(log.DEBUG)
 	pprof.Register(e)
+	initCaches()
+	scheduler.Every(1).Seconds().Run(execTrendJob)
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
@@ -291,6 +300,8 @@ func main() {
 	close(condtionQ)
 
 	conditionWg.Wait()
+
+	scheduler.Every(1).Seconds().Run(execTrendJob)
 }
 
 func getSession(r *http.Request) (*sessions.Session, error) {
@@ -1122,14 +1133,30 @@ func calculateConditionLevel(condition string) (string, error) {
 	return conditionLevel, nil
 }
 
+// cacheの初期化
+func initCaches() {
+	trendCache = sync.Map{}
+}
+
 // GET /api/trend
 // ISUの性格毎の最新のコンディション情報
 func getTrend(c echo.Context) error {
+	res, ok := trendCache.Load("trend")
+
+	if ok {
+		return c.JSON(http.StatusOK, res)
+	}
+	
+	c.Logger().Errorf("cache not found")
+	return c.NoContent(http.StatusInternalServerError)
+}
+
+// １秒間に１回実行される
+func execTrendJob() {
 	characterList := []Isu{}
 	err := db.Select(&characterList, "SELECT `character` FROM `isu` GROUP BY `character`")
 	if err != nil {
-		c.Logger().Errorf("db error: %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+		return 
 	}
 
 	res := []TrendResponse{}
@@ -1141,8 +1168,7 @@ func getTrend(c echo.Context) error {
 			character.Character,
 		)
 		if err != nil {
-			c.Logger().Errorf("db error: %v", err)
-			return c.NoContent(http.StatusInternalServerError)
+			return
 		}
 
 		characterInfoIsuConditions := []*TrendCondition{}
@@ -1156,16 +1182,14 @@ func getTrend(c echo.Context) error {
 				isu.JIAIsuUUID,
 			)
 			if err != nil {
-				c.Logger().Errorf("db error: %v", err)
-				return c.NoContent(http.StatusInternalServerError)
+				return
 			}
 
 			if len(conditions) > 0 {
 				isuLastCondition := conditions[0]
 				conditionLevel, err := calculateConditionLevel(isuLastCondition.Condition)
 				if err != nil {
-					c.Logger().Error(err)
-					return c.NoContent(http.StatusInternalServerError)
+					return
 				}
 				trendCondition := TrendCondition{
 					ID:        isu.ID,
@@ -1201,7 +1225,7 @@ func getTrend(c echo.Context) error {
 			})
 	}
 
-	return c.JSON(http.StatusOK, res)
+	trendCache.Store("trend", res)
 }
 
 // POST /api/condition/:jia_isu_uuid
