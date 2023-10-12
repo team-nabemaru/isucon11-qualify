@@ -312,7 +312,7 @@ func getUserIDFromSession(c echo.Context) (string, int, error) {
 	}
 
 	jiaUserID := _jiaUserID.(string)
-	var exist int
+	var exist *int
 
 	err = db.Get(&exist, "SELECT 1 FROM `user` WHERE `jia_user_id` = ? LIMIT 1",
 		jiaUserID)
@@ -320,7 +320,7 @@ func getUserIDFromSession(c echo.Context) (string, int, error) {
 		return "", http.StatusInternalServerError, fmt.Errorf("db error: %v", err)
 	}
 
-	if count == 0 {
+	if err == sql.ErrNoRows || exist == nil {
 		return "", http.StatusUnauthorized, fmt.Errorf("not found: user")
 	}
 
@@ -782,14 +782,14 @@ func getIsuGraph(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	var exist int
+	var exist *int
 	err = tx.Get(&exist, "SELECT 1 FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ? LIMIT 1",
 		jiaUserID, jiaIsuUUID)
 	if err != nil && err != sql.ErrNoRows {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	if exist == 0 {
+	if err == sql.ErrNoRows || exist == nil {
 		return c.String(http.StatusNotFound, "not found: isu")
 	}
 
@@ -1227,13 +1227,13 @@ func postIsuCondition(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "bad request body")
 	}
 
-	var exist int
+	var exist *int
 	err = db.Get(&exist, "SELECT 1 FROM `isu` WHERE `jia_isu_uuid` = ? LIMIT 1", jiaIsuUUID)
 	if err != nil && err != sql.ErrNoRows {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	if exist == 0 {
+	if err == sql.ErrNoRows || exist == nil {
 		return c.String(http.StatusNotFound, "not found: isu")
 	}
 
@@ -1246,14 +1246,14 @@ func postIsuCondition(c echo.Context) error {
 		}
 		defer tx.Rollback()
 
-		var exist int
+		var exist *int
 		err = tx.Get(&exist, "SELECT 1 FROM `isu` WHERE `jia_isu_uuid` = ? LIMIT 1", jiaIsuUUID)
 		if err != nil && err != sql.ErrNoRows {
 			// c.Logger().Errorf("db error: %v", err)
 			// return c.NoContent(http.StatusInternalServerError)
 			return
 		}
-		if exist == 0 {
+		if err == sql.ErrNoRows || exist == nil {
 			// return c.String(http.StatusNotFound, "not found: isu")
 			return
 		}
