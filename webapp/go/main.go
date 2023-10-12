@@ -312,11 +312,11 @@ func getUserIDFromSession(c echo.Context) (string, int, error) {
 	}
 
 	jiaUserID := _jiaUserID.(string)
-	var count int
+	var exist int
 
-	err = db.Get(&count, "SELECT COUNT(*) FROM `user` WHERE `jia_user_id` = ?",
+	err = db.Get(&exist, "SELECT 1 FROM `user` WHERE `jia_user_id` = ? LIMIT 1",
 		jiaUserID)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return "", http.StatusInternalServerError, fmt.Errorf("db error: %v", err)
 	}
 
@@ -782,14 +782,14 @@ func getIsuGraph(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	var count int
-	err = tx.Get(&count, "SELECT COUNT(*) FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?",
+	var exist int
+	err = tx.Get(&exist, "SELECT 1 FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ? LIMIT 1",
 		jiaUserID, jiaIsuUUID)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	if count == 0 {
+	if exist == 0 {
 		return c.String(http.StatusNotFound, "not found: isu")
 	}
 
@@ -1227,13 +1227,13 @@ func postIsuCondition(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "bad request body")
 	}
 
-	var count int
-	err = db.Get(&count, "SELECT COUNT(*) FROM `isu` WHERE `jia_isu_uuid` = ?", jiaIsuUUID)
-	if err != nil {
+	var exist int
+	err = db.Get(&exist, "SELECT 1 FROM `isu` WHERE `jia_isu_uuid` = ? LIMIT 1", jiaIsuUUID)
+	if err != nil && err != sql.ErrNoRows {
 		c.Logger().Errorf("db error: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	if count == 0 {
+	if exist == 0 {
 		return c.String(http.StatusNotFound, "not found: isu")
 	}
 
@@ -1246,14 +1246,14 @@ func postIsuCondition(c echo.Context) error {
 		}
 		defer tx.Rollback()
 
-		var count int
-		err = tx.Get(&count, "SELECT COUNT(*) FROM `isu` WHERE `jia_isu_uuid` = ?", jiaIsuUUID)
-		if err != nil {
+		var exist int
+		err = tx.Get(&exist, "SELECT 1 FROM `isu` WHERE `jia_isu_uuid` = ? LIMIT 1", jiaIsuUUID)
+		if err != nil && err != sql.ErrNoRows {
 			// c.Logger().Errorf("db error: %v", err)
 			// return c.NoContent(http.StatusInternalServerError)
 			return
 		}
-		if count == 0 {
+		if exist == 0 {
 			// return c.String(http.StatusNotFound, "not found: isu")
 			return
 		}
